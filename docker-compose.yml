@@ -1,0 +1,75 @@
+version: "3"
+services:
+
+  rabbitmq:
+    image: rabbitmq:3.7.7-management
+    ports:
+      - "5672:5672"
+      - 18080:15672
+    environment:
+      - RABBITMQ_DEFAULT_USER
+      - RABBITMQ_DEFAULT_PASS
+    restart: on-failure
+
+  nominatim:
+    image: nominatim
+    command: sh /app/start.sh
+    ports:
+      - 6432:5432
+      - 7070:8080
+    volumes:
+      - /root/geodata/postgresdata:/var/lib/postgresql/9.5/main
+
+  processors:
+    image: floschnell/flatcrawl-processors:latest
+    ports:
+      - "8443:8443"
+    environment:
+      - FLATCRAWL_DATABASE_KEY
+      - FLATCRAWL_BOT_TOKEN
+      - RABBITMQ_DEFAULT_USER
+      - RABBITMQ_DEFAULT_PASS
+    restart: on-failure
+
+  web:
+    image: floschnell/flatcrawl-web:latest
+    command: http-server /opt/app/public
+    ports:
+      - "5555:8080"
+    restart: on-failure
+
+  isochrones:
+    image: floschnell/flatcrawl-isochrones
+    command: node /opt/app/index.js
+    environment:
+      - OSRM_ENDPOINT_WALKING=http://routing-foot:5000
+      - OSRM_ENDPOINT_BICYCLING=http://routing-bicycle:5000
+      - OSRM_ENDPOINT_DRIVING=http://routing-car:5000
+      - NUMBER_OF_GRID_CELLS=20
+    ports:
+      - "5010:3000"
+    restart: on-failure
+  
+  routing-car:
+    image: osrm/osrm-backend:v5.18.0
+    command: osrm-routed --algorithm mld /data/bayern-latest.osrm
+    volumes:
+      - /opt/osm/car:/data
+    ports:
+      - "5000:5000"
+
+  routing-bicycle:
+    image: osrm/osrm-backend:v5.18.0
+    command: osrm-routed --algorithm mld /data/bayern-latest.osrm
+    volumes:
+      - /opt/osm/bicycle:/data
+    ports:
+      - "5001:5000"
+
+  routing-foot:
+    image: osrm/osrm-backend:v5.18.0
+    command: osrm-routed --algorithm mld /data/bayern-latest.osrm
+    volumes:
+      - /opt/osm/foot:/data
+    ports:
+      - "5002:5000"
