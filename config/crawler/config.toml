@@ -1,0 +1,12 @@
+thread_count = 4
+
+# address of the geocoding service
+nominatim_url = "https://nominatim.openstreetmap.org/search"
+
+test = false
+
+[amqp]
+host = "www.floschnell.de"
+username = "<set-me>"
+password = "<set-me>"
+queue = "flats"
