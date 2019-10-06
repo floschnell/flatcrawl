@@ -2,20 +2,33 @@
 profiles=( "car" "bicycle" "foot" )
 
 # download region
-wget http://download.geofabrik.de/europe/germany/bayern-latest.osm.pbf map.osm.pbf
+if [[ ! -f "data/map.osm.pbf" ]]; then
+  echo "download new map material ..."
+  wget http://download.geofabrik.de/europe/germany/bayern-latest.osm.pbf
+  mv bayern-latest.osm.pbf ./data/map.osm.pbf
+fi
 
 for profile in "${profiles[@]}"
 do
-  # run preprocessing for car
-  docker run -t -v $(pwd):/data osrm/osrm-backend osrm-extract -p /opt/$profile.lua /data/map.osm.pbf
-  docker run -t -v $(pwd):/data osrm/osrm-backend osrm-partition /data/map.osrm
-  docker run -t -v $(pwd):/data osrm/osrm-backend osrm-customize /data/map.osrm
+  if [[ ! -f $profile.tar.gz ]]; then
+    # run preprocessing for car
+    current_dir=$(pwd)
+    docker run -t -v $current_dir/data:/data osrm/osrm-backend:v5.22.0 osrm-extract -p /opt/$profile.lua /data/map.osm.pbf
+    docker run -t -v $current_dir/data:/data osrm/osrm-backend:v5.22.0 osrm-partition /data/map.osrm
+    docker run -t -v $current_dir/data:/data osrm/osrm-backend:v5.22.0 osrm-customize /data/map.osrm
 
-  # zip relevant files
-  mkdir $profile
-  mv ./*osrm* ./$profile/
-  tar -zcvf $profile.tar.gz ./$profile
+    # zip relevant files
+    mkdir $profile
+    mv ./data/*osrm* ./$profile/
+    tar -zcvf $profile.tar.gz ./$profile
+    rm -rf ./$profile
+  else
+    echo "skipping $profile ..."
+  fi
+done
 
+for profile in "${profiles[@]}"
+do
   # copy files to server
   scp $profile.tar.gz root@floschnell.de:/opt/osm/
 
