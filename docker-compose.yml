@@ -14,10 +14,10 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER
       - RABBITMQ_DEFAULT_PASS
-    restart: on-failure
 
   processors:
     image: floschnell/flatcrawl-processors:latest
+    command: yarn start
     ports:
       - "8443:8443"
     environment:
@@ -25,19 +25,16 @@ services:
       - FLATCRAWL_BOT_TOKEN
       - RABBITMQ_DEFAULT_USER
       - RABBITMQ_DEFAULT_PASS
-    restart: on-failure
 
   web:
     image: floschnell/flatcrawl-web:latest
     command: http-server /opt/app/public
     ports:
       - "5555:8080"
-    restart: on-failure
 
   crawlers:
     image: floschnell/flatcrawl-crawler:1.0
     command: 'bash -c "cp /run/secrets/config.toml /opt/flatcrawl/config.toml && ./crawler"'
-    restart: on-failure
     secrets:
       - source: crawler_config
         target: config.toml
@@ -52,7 +49,6 @@ services:
       - NUMBER_OF_GRID_CELLS=20
     ports:
       - "5010:3000"
-    restart: on-failure
   
   routing-car:
     image: osrm/osrm-backend:v5.22.0
